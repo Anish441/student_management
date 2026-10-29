@@ -13,33 +13,32 @@ pipeline {
             }
         }
 
-       stage('Build & Test') {
-           steps {
-               sh 'mvn clean verify'
-           }
-           post {
-               always {
-                   junit testResults: 'target/surefire-reports/*.xml',
-                         allowEmptyResults: true
-               }
-           }
-       }
-
-        stage('Deploy') {
+        stage('Build & Test') {
             steps {
-                sshagent(['target-ssh']) {
-                    sh 'ansible-playbook -i ansible/inventory.ini ansible/deploy.yml'
+                sh 'mvn clean verify'
+            }
+            post {
+                always {
+                    junit testResults: 'target/surefire-reports/*.xml',
+                          allowEmptyResults: true
                 }
+            }
+        }
+
+        stage('Build Result') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar',
+                                 allowEmptyArchive: false
             }
         }
     }
 
     post {
         success {
-            echo 'Deployed. App is live on port 8081.'
+            echo 'Build successful! JAR artifact archived.'
         }
         failure {
-            echo 'Pipeline failed. Check the stage logs.'
+            echo 'Build failed. Check the stage logs.'
         }
     }
 }
