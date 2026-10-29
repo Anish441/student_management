@@ -1,19 +1,30 @@
 pipeline {
     agent any
+
     tools {
         maven 'Maven3'
         jdk 'JDK17'
     }
+
     stages {
         stage('Checkout') {
-            steps { checkout scm }
-        }
-        stage('Build & Test') {
-            steps { sh 'mvn clean verify' }
-            post {
-                always { junit 'target/surefire-reports/*.xml' }
+            steps {
+                checkout scm
             }
         }
+
+        stage('Build & Test') {
+            steps {
+                sh 'mvn clean verify'
+            }
+            post {
+                always {
+                    junit testResults: 'target/surefire-reports/*.xml',
+                          allowEmptyResults: true
+                }
+            }
+        }
+
         stage('Deploy') {
             steps {
                 sshagent(['target-ssh']) {
@@ -22,8 +33,13 @@ pipeline {
             }
         }
     }
+
     post {
-        success { echo 'Deployed. App is live on port 8081.' }
-        failure { echo 'Pipeline failed. Check the stage logs.' }
+        success {
+            echo 'Deployed. App is live on port 8081.'
+        }
+        failure {
+            echo 'Pipeline failed. Check the stage logs.'
+        }
     }
 }
