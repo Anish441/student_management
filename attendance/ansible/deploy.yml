@@ -1,0 +1,64 @@
+---
+- name: Deploy Attendance App
+  hosts: appservers
+  become: yes
+  vars:
+    app_dir: /opt/attendance
+  tasks:
+    - name: Ensure Java is installed
+      apt:
+        name: openjdk-17-jre-headless
+        state: present
+        update_cache: yes
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ ansible_user | default('root') }}"
+
+    - name: Copy the new jar
+      copy:
+        src: ../target/attendance.jar
+        dest: "{{ app_dir }}/attendance.jar"
+      notify: Restart attendance
+
+    - name: Install systemd service
+      copy:
+        dest: /etc/systemd/system/attendance.service
+        content: |
+          [Unit]
+          Description=Attendance App
+          After=network.target
+
+          [Service]
+          WorkingDirectory={{ app_dir }}
+          ExecStart=/usr/bin/java -jar {{ app_dir }}/attendance.jar
+          Restart=always
+          User={{ ansible_user | default('root') }}
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart attendance
+
+    - name: Enable and start service
+      systemd:
+        name: attendance
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Wait for the app to respond
+      uri:
+        url: http://localhost:8081/
+        status_code: 200
+      register: result
+      retries: 12
+      delay: 5
+      until: result.status == 200
+
+  handlers:
+    - name: Restart attendance
+      systemd:
+        name: attendance
+        state: restarted

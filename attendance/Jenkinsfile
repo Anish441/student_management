@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+    tools {
+        maven 'Maven3'
+        jdk 'JDK17'
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build & Test') {
+            steps { sh 'mvn clean verify' }
+            post {
+                always { junit 'target/surefire-reports/*.xml' }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sshagent(['target-ssh']) {
+                    sh 'ansible-playbook -i ansible/inventory.ini ansible/deploy.yml'
+                }
+            }
+        }
+    }
+    post {
+        success { echo 'Deployed. App is live on port 8081.' }
+        failure { echo 'Pipeline failed. Check the stage logs.' }
+    }
+}

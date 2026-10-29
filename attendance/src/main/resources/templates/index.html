@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Attendance</title></head>
+<body>
+  <h1>Student Attendance</h1>
+  <form th:action="@{/add}" method="post">
+    <input name="name" placeholder="Student name" required>
+    <button>Add</button>
+  </form>
+  <table border="1" cellpadding="6">
+    <tr><th>Name</th><th>Status</th><th>Action</th></tr>
+    <tr th:each="s : ${students}">
+      <td th:text="${s.name}"></td>
+      <td th:text="${s.present} ? 'Present' : 'Absent'"></td>
+      <td>
+        <form th:action="@{/mark/{id}(id=${s.id})}" method="post" style="display:inline">
+          <input type="hidden" name="present" th:value="${!s.present}">
+          <button th:text="${s.present} ? 'Mark Absent' : 'Mark Present'"></button>
+        </form>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
