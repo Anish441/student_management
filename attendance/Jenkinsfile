@@ -1,9 +1,17 @@
 pipeline {
     agent any
 
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
     tools {
         maven 'Maven3'
         jdk 'JDK17'
+    }
+
+    environment {
+        IMAGE_NAME = 'attendance'
     }
 
     stages {
@@ -25,6 +33,12 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME:$BUILD_NUMBER -t $IMAGE_NAME:latest .'
+            }
+        }
+
         stage('Build Result') {
             steps {
                 archiveArtifacts artifacts: 'target/*.jar',
@@ -35,7 +49,7 @@ pipeline {
 
     post {
         success {
-            echo 'Build successful! JAR artifact archived.'
+            echo "Build successful! Docker image $IMAGE_NAME:$BUILD_NUMBER created."
         }
         failure {
             echo 'Build failed. Check the stage logs.'
