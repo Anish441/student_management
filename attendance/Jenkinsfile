@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -23,33 +24,53 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-                sh 'mvn clean verify'
+                dir('attendance') {
+                    sh 'mvn clean verify'
+                }
             }
             post {
                 always {
-                    junit testResults: 'target/surefire-reports/*.xml',
-                          allowEmptyResults: true
+                    dir('attendance') {
+                        script {
+                            if (fileExists('target/surefire-reports')) {
+                                junit(
+                                    testResults: 'target/surefire-reports/TEST-*.xml',
+                                    allowEmptyResults: true
+                                )
+                            } else {
+                                echo 'No test reports found.'
+                            }
+                        }
+                    }
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$BUILD_NUMBER -t $IMAGE_NAME:latest .'
+                dir('attendance') {
+                    sh '''
+                        docker build \
+                            -t $IMAGE_NAME:$BUILD_NUMBER \
+                            -t $IMAGE_NAME:latest .
+                    '''
+                }
             }
         }
 
-        stage('Build Result') {
+        stage('Archive Build Result') {
             steps {
-                archiveArtifacts artifacts: 'target/*.jar',
-                                 allowEmptyArchive: false
+                archiveArtifacts(
+                    artifacts: 'attendance/target/*.jar',
+                    allowEmptyArchive: false
+                )
             }
         }
     }
 
     post {
         success {
-            echo "Build successful! Docker image $IMAGE_NAME:$BUILD_NUMBER created."
+            echo 'Build and Docker image creation successful!'
         }
         failure {
             echo 'Build failed. Check the stage logs.'
